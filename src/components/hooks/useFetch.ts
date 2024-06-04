@@ -1,43 +1,41 @@
-import { useState } from 'react';
-import { HEADERS } from '../../api/common';
-import { CommonQueryParams } from '../../types/fetch';
-import { generateQueryParams } from '../../utils/generateQueryParams';
+import { useState, useCallback } from 'react';
+import APIError from '../../api/apiError';
 
-interface UseFetchResult<T> {
-  loading: boolean;
-  error: Error | null;
-  fetchData: (queryParams?: CommonQueryParams) => Promise<T | undefined>;
+interface UseFetchProps<TData> {
+  queryFn: () => Promise<TData>;
+  onError?: (error: APIError) => Promise<unknown> | unknown;
 }
 
-interface UseFetchProps {
-  url: string;
+interface UseFetchResult<TData> {
+  query: () => Promise<void>;
+  isLoading: boolean;
+  error: APIError | null;
+  data: TData;
 }
 
-export default function useFetch<T>({ url }: UseFetchProps): UseFetchResult<T> {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+export default function useFetch<TData>({
+  queryFn,
+  onError,
+}: UseFetchProps<TData>): UseFetchResult<TData> {
+  const [isLoading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<APIError | null>(null);
+  const [data, setData] = useState<TData>({} as TData);
 
-  const fetchData = async (queryParams?: CommonQueryParams) => {
+  const query = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    const queryString = queryParams ? generateQueryParams(queryParams) : '';
     try {
-      const response = await fetch(`${url}?${queryString}`, {
-        method: 'GET',
-        headers: HEADERS,
-      });
-
-      if (!response.ok) throw new Error(`${response.status}`);
-
-      const data = await response.json();
-      return data as T;
+      const data = await queryFn();
+      setData(data);
     } catch (error) {
-      setError(error as Error);
+      setError(error as APIError);
+
+      if (onError) onError(error as APIError);
     } finally {
       setLoading(false);
     }
-  };
+  }, [queryFn, onError]);
 
-  return { loading, error, fetchData };
+  return { query, isLoading, error, data };
 }

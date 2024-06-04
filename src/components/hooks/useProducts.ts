@@ -1,88 +1,90 @@
-import { useCallback, useEffect, useState } from 'react';
-import { PRODUCTS_ENDPOINT } from '../../api/endpoints';
+import { useEffect, useState } from 'react';
+import { SortOrder, SortType } from '../../api/types';
 import {
-  INITIAL_PAGING_SIZE,
-  PAGING_SIZE,
-  START_PAGE_NUMBER,
-} from '../../constants/api';
-import useFetch from './useFetch';
-import { Product } from '../../types';
+  INITIAL_PAGE_NUMBER,
+  INITIAL_PAGE_SIZE,
+  PAGE_SIZE,
+} from '../../constants/paginationRules';
+import { Category, Product } from '../../types';
+import { productQueries } from './queries/product';
 
-export type SortType = 'desc' | 'asc';
-
-interface UseProductsResult {
+export interface UseProductsResult {
   products: Product[];
-  loading: boolean;
+  isLoading: boolean;
   error: Error | null;
-  page: number;
   isLastPage: boolean;
+  page: number;
   fetchNextPage: () => void;
-
-  setCategory: React.Dispatch<React.SetStateAction<string>>;
-  setSort: React.Dispatch<React.SetStateAction<SortType>>;
-}
-
-interface FetchProductsResponse {
-  last: boolean;
-  content: Product[];
+  setSort: (value: string) => void;
+  setCategory: (value: string) => void;
 }
 
 export default function useProducts(): UseProductsResult {
-  const { error, loading, fetchData } = useFetch<FetchProductsResponse>({
-    url: PRODUCTS_ENDPOINT,
-  });
-
   const [products, setProducts] = useState<Product[]>([]);
-  const [page, setPage] = useState(0);
-  const [sort, setSort] = useState<SortType>('asc');
-  const [category, setCategory] = useState<string>('');
-  const [isLastPage, setIsLastPage] = useState<boolean>(false);
+  const [isLastPage, setIsLastPage] = useState(false);
 
-  const getProducts = useCallback(async () => {
-    fetchData({
-      page,
-      size: page === START_PAGE_NUMBER ? INITIAL_PAGING_SIZE : PAGING_SIZE,
-      sort: `price,${sort}`,
-      category,
-    }).then((response) => {
-      if (!response) return;
-      const { last, content } = response;
+  const [page, setPage] = useState(INITIAL_PAGE_NUMBER);
+  const [sort, setSort] = useState<SortType>({ price: 'asc', id: 'asc' });
+  const [category, setCategory] = useState<Category | ''>('');
 
-      setIsLastPage(last);
-      setProducts((prevProducts) =>
-        page === START_PAGE_NUMBER ? content : [...prevProducts, ...content]
-      );
-    });
-  }, [page, sort, category]);
+  const {
+    query: getProducts,
+    data: productsResponse,
+    isLoading,
+    error,
+  } = productQueries.useGetProducts({
+    page,
+    category,
+    sort: Object.entries(sort).map(([field, order]) => `${field},${order}`),
+    size: page === INITIAL_PAGE_NUMBER ? INITIAL_PAGE_SIZE : PAGE_SIZE,
+  });
 
   useEffect(() => {
     if (!isLastPage) {
       getProducts();
     }
-  }, [page]);
+  }, [page, sort, category, isLastPage]);
 
   useEffect(() => {
-    setPage(START_PAGE_NUMBER);
     setIsLastPage(false);
-    getProducts();
+    setPage(INITIAL_PAGE_NUMBER);
   }, [category, sort]);
 
-  const fetchNextPage = () => {
-    if (!isLastPage) {
-      if (page === START_PAGE_NUMBER)
-        setPage(page + INITIAL_PAGING_SIZE / PAGING_SIZE);
-      else setPage(page + 1);
+  useEffect(() => {
+    if (productsResponse) {
+      const { last, content } = productsResponse;
+      setIsLastPage(last);
+      setProducts((prevProducts) =>
+        page === INITIAL_PAGE_NUMBER ? content : [...prevProducts, ...content]
+      );
     }
+  }, [productsResponse]);
+
+  const fetchNextPage = () => {
+    if (isLastPage) return;
+
+    // 서버의 page size가 4로 고정되어
+    // page: 0, size: 20 요청 이후엔
+    // page: 5, size: 4 로 요청해야 함
+    setPage((prevPage) =>
+      prevPage !== INITIAL_PAGE_NUMBER
+        ? prevPage + 1
+        : prevPage + INITIAL_PAGE_SIZE / PAGE_SIZE
+    );
   };
 
   return {
-    products,
-    loading,
+    products: products ?? [],
+    isLoading,
     error,
     page,
     fetchNextPage,
-    setCategory,
-    setSort,
+    setCategory: (value: string) => {
+      setCategory(value as Category);
+    },
+    setSort: (value: string) => {
+      setSort((prev) => ({ ...prev, price: value as SortOrder }));
+    },
     isLastPage,
   };
 }

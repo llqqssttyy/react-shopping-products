@@ -1,46 +1,47 @@
-import { useContext, useState } from 'react';
-import { addCartItem, removeCartItem } from '../../../api/cart';
-import { CartItemsContext } from '../../../context/CartItemsProvider';
 import { AddCartIcon, RemoveCartIcon } from './Icons';
 import * as S from './style';
+import { cartMutations } from '../../hooks/queries/cart';
+import { CartButtonProvider } from '../../../context/cartButton/CartButtonProvider';
+import { useCartButtonContext } from '../../../context/cartButton/useCartButtonContext';
+import { useCartItemsContext } from '../../../context/cartItems/useCartItemsContext';
 
-interface CartButtonProps {
+export interface CartButtonProps {
   productId: number;
 }
 
 export default function CartButton({ productId }: CartButtonProps) {
-  const { cartItems } = useContext(CartItemsContext);
-  const [isPushed, setPushed] = useState(() =>
-    cartItems.some((cartItem) => cartItem.product.id === productId)
-  );
-
-  return isPushed ? (
-    <RemoveCartButton setPushed={setPushed} productId={productId} />
-  ) : (
-    <AddCartButton setPushed={setPushed} productId={productId} />
+  return (
+    <CartButtonProvider productId={productId}>
+      <CartButton.Toggle />
+    </CartButtonProvider>
   );
 }
 
-interface CartToggleButtonProps extends CartButtonProps {
-  setPushed: React.Dispatch<React.SetStateAction<boolean>>;
-}
+CartButton.Toggle = function Toggle() {
+  const { isPushed } = useCartButtonContext();
 
-export function RemoveCartButton({
-  setPushed,
-  productId,
-}: CartToggleButtonProps) {
-  const { cartItems, setRefresh } = useContext(CartItemsContext);
+  return isPushed ? <CartButton.Remove /> : <CartButton.Add />;
+};
+
+CartButton.Remove = function Remove() {
+  const { productId, setIsPushed } = useCartButtonContext();
+  const { cartItems, refreshCartItems } = useCartItemsContext();
+
   const cartItemId = cartItems.find(
     (cartItem) => cartItem.product.id === productId
   )?.id;
 
+  const { query: removeCartItem } = cartMutations.useDeleteCartItem({
+    cartItemId,
+  });
+
   const handleClick = () => {
-    if (cartItemId) {
-      removeCartItem({ cartItemId }).then(() => {
-        setRefresh(true);
-        setPushed(false);
-      });
-    }
+    if (!cartItemId) return;
+
+    removeCartItem().then(() => {
+      refreshCartItems();
+      setIsPushed(false);
+    });
   };
 
   return (
@@ -49,15 +50,20 @@ export function RemoveCartButton({
       <p>빼기</p>
     </S.Button>
   );
-}
+};
 
-export function AddCartButton({ setPushed, productId }: CartToggleButtonProps) {
-  const { setRefresh } = useContext(CartItemsContext);
+CartButton.Add = function Add() {
+  const { productId, setIsPushed } = useCartButtonContext();
+  const { refreshCartItems } = useCartItemsContext();
+
+  const { query: addCartItem } = cartMutations.useAddCartItem({
+    productId,
+  });
 
   const handleClick = () => {
-    addCartItem({ productId }).then(() => {
-      setPushed(true);
-      setRefresh(true);
+    addCartItem().then(() => {
+      refreshCartItems();
+      setIsPushed(true);
     });
   };
 
@@ -67,4 +73,4 @@ export function AddCartButton({ setPushed, productId }: CartToggleButtonProps) {
       <p>담기</p>
     </S.Button>
   );
-}
+};

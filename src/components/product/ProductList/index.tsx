@@ -1,24 +1,42 @@
-import APIErrorFallbackModal from '../../common/APIErrorFallbackModal';
-import { LoadingSpinner } from '../../common/LoadingSpinner/style';
 import * as S from './style';
 
-interface ProductListProps {
-  loading: boolean;
-  error: Error | null;
-}
+import APIErrorToast from '../../common/APIErrorToast';
+import IntersectionArea from '../../common/IntersectionArea';
+import { LoadingSpinner } from '../../common/LoadingSpinner/style';
+import { UseProductsResult } from '../../hooks/useProducts';
+import ProductItem from '../ProductItem';
 
 export default function ProductList({
   error,
-  loading,
-  children,
-}: React.PropsWithChildren<ProductListProps>) {
+  isLoading,
+  products,
+  fetchNextPage,
+}: UseProductsResult) {
+  const isEmptyProducts = products.length === 0;
+
   return (
-    <S.Grid>
-      {error && <APIErrorFallbackModal errorMessage={error.message} />}
+    <S.Grid isEmpty={isEmptyProducts}>
+      {error && <APIErrorToast errorMessage={error.message} />}
 
-      {children}
+      {isEmptyProducts && !isLoading && (
+        <S.EmptyProducts>해당하는 상품이 없습니다.</S.EmptyProducts>
+      )}
 
-      {loading && (
+      {products.map((product, idx) => {
+        const isLastProductItem = idx + 1 !== products.length;
+        return isLastProductItem ? (
+          <ProductItem product={product} key={`${product.id}_${idx}`} />
+        ) : (
+          <IntersectionArea
+            onImpression={fetchNextPage}
+            key={`${product.id}_${idx}`}
+          >
+            <ProductItem product={product} />
+          </IntersectionArea>
+        );
+      })}
+
+      {isLoading && (
         <S.LoadingContainer>
           <LoadingSpinner />
         </S.LoadingContainer>

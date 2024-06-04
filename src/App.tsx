@@ -2,78 +2,58 @@ import Dropdown from './components/common/Dropdown';
 import Title from './components/common/Title';
 import Layout from './components/layout';
 import Header from './components/product/Header';
+import ProductList from './components/product/ProductList';
 
 import styled from '@emotion/styled';
-import IntersectionArea from './components/common/IntersectionArea';
-import useProducts, { SortType } from './components/hooks/useProducts';
-import ProductItem from './components/product/ProductItem';
-import ProductList from './components/product/ProductList';
-import { CartItemsProvider } from './context/CartItemsProvider';
+import useProducts from './components/hooks/useProducts';
 
 import { CATEGORY, SORT } from './constants/filterOptions';
 import { PAGE_INFORMATION } from './constants/page';
-
-const Wrapper = styled.div`
-  display: flex;
-  justify-content: center;
-`;
-
-const FilterContainer = styled.div`
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
+import { CartItemsProvider } from './context/cartItems/CartItemsProvider';
 
 function App() {
-  const { products, setCategory, setSort, fetchNextPage, error, loading } =
-    useProducts();
-
-  const onCategorySelect = (value: string) => {
-    setCategory(value);
-  };
-  const onSortSelect = (value: string) => {
-    setSort(value as SortType);
-  };
+  const useProductsResult = useProducts();
 
   return (
-    <Wrapper>
+    <S.Wrapper>
       <CartItemsProvider>
         <Layout header={<Header />}>
           <Title content={PAGE_INFORMATION.main.title} />
-          <FilterContainer>
+
+          <S.FilterContainer>
             <Dropdown
               size="small"
               defaultContent={CATEGORY.defaultContent}
               options={CATEGORY.options}
-              onSelect={onCategorySelect}
+              onSelect={useProductsResult.setCategory}
             />
             <Dropdown
               size="small"
               defaultContent={SORT.defaultContent}
               options={SORT.options}
-              onSelect={onSortSelect}
+              onSelect={useProductsResult.setSort}
             />
-          </FilterContainer>
+          </S.FilterContainer>
 
-          <ProductList loading={loading} error={error}>
-            {products.map((product, idx) => {
-              return idx + 1 !== products.length ? (
-                <ProductItem product={product} key={`${product.id}_${idx}`} />
-              ) : (
-                <IntersectionArea
-                  onImpression={fetchNextPage}
-                  key={`${product.id}_${idx}`}
-                >
-                  <ProductItem product={product} />
-                </IntersectionArea>
-              );
-            })}
-          </ProductList>
+          <ProductList {...useProductsResult} />
         </Layout>
       </CartItemsProvider>
-    </Wrapper>
+    </S.Wrapper>
   );
 }
 
 export default App;
+
+const S = {
+  Wrapper: styled.div`
+    display: flex;
+    justify-content: center;
+  `,
+
+  FilterContainer: styled.div`
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  `,
+};

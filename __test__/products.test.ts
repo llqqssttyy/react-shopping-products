@@ -1,17 +1,19 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { HttpResponse, http } from 'msw';
-import useProducts, { SortType } from './useProducts';
-import server from '../../mocks/server';
-import { PRODUCTS_ENDPOINT } from '../../api/endpoints';
+import { PRODUCTS_ENDPOINT } from '../src/api/endpoints';
+import { SortOrder } from '../src/api/types';
+import server from '../src/mocks/server';
+import { Category } from '../src/types';
+import useProducts from '../src/components/hooks/useProducts';
 
-describe('useProducts', () => {
+describe('상품 목록 테스트', () => {
   describe('상품 목록 조회', () => {
     it('상품 목록을 조회한다.', async () => {
       const { result } = renderHook(() => useProducts());
 
       await waitFor(() => {
         expect(result.current.products).toHaveLength(20);
-        expect(result.current.loading).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(result.current.error).toBeNull();
       });
     });
@@ -19,7 +21,7 @@ describe('useProducts', () => {
     it('상품 목록 조회 중 로딩 상태', () => {
       const { result } = renderHook(() => useProducts());
 
-      expect(result.current.loading).toBe(true);
+      expect(result.current.isLoading).toBe(true);
     });
 
     it('상품 목록 조회 중 에러 상태', async () => {
@@ -33,7 +35,7 @@ describe('useProducts', () => {
 
       await waitFor(() => {
         expect(result.current.products).toEqual([]);
-        expect(result.current.loading).toBe(false);
+        expect(result.current.isLoading).toBe(false);
         expect(result.current.error).toBeTruthy();
       });
     });
@@ -103,17 +105,17 @@ describe('useProducts', () => {
       const { result } = renderHook(() => useProducts());
 
       await waitFor(() => {
-        expect(result.current.loading).toBe(false);
+        expect(result.current.isLoading).toBe(false);
       });
 
       act(() => {
         result.current.fetchNextPage();
       });
 
-      expect(result.current.loading).toBe(true);
+      expect(result.current.isLoading).toBe(true);
 
       await waitFor(() => {
-        expect(result.current.loading).toBe(false);
+        expect(result.current.isLoading).toBe(false);
       });
     });
   });
@@ -131,7 +133,7 @@ describe('useProducts', () => {
       const { result } = renderHook(() => useProducts());
 
       act(() => {
-        result.current.setSort(option as SortType);
+        result.current.setSort(option as SortOrder);
       });
 
       await waitFor(() => {
@@ -185,7 +187,7 @@ describe('useProducts', () => {
       const { result } = renderHook(() => useProducts());
 
       act(() => {
-        result.current.setCategory(category);
+        result.current.setCategory(category as Category);
       });
 
       await waitFor(() => {
