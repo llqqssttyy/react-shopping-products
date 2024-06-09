@@ -6,6 +6,10 @@ const globalStyles = () => css`
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+
+    // scrollbar
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 
   button {
@@ -17,7 +21,21 @@ const globalStyles = () => css`
 
   html,
   body,
-  div,
+  <<<<<<< HEAD ======= #root {
+    width: 100%;
+    height: 100%;
+  }
+
+  #modal-portal-root {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: 430px;
+  }
+
+  html,
+  body,
+  >>>>>>>step2 div,
   span,
   applet,
   object,

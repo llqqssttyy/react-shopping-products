@@ -1,9 +1,12 @@
-import { AddCartIcon, RemoveCartIcon } from './Icons';
-import * as S from './style';
-import { cartMutations } from '../../hooks/queries/cart';
 import { CartButtonProvider } from '../../../context/cartButton/CartButtonProvider';
 import { useCartButtonContext } from '../../../context/cartButton/useCartButtonContext';
-import { useCartItemsContext } from '../../../context/cartItems/useCartItemsContext';
+import { cartMutations } from '../../../hooks/queries/cart';
+
+import { Suspense } from 'react';
+import { LoadingSpinner } from '../../common/LoadingSpinner/style';
+import QuantityButton from '../../common/QuantityButton';
+import { AddCartIcon } from './Icons';
+import * as S from './style';
 
 export interface CartButtonProps {
   productId: number;
@@ -18,53 +21,30 @@ export default function CartButton({ productId }: CartButtonProps) {
 }
 
 CartButton.Toggle = function Toggle() {
-  const { isPushed } = useCartButtonContext();
-
-  return isPushed ? <CartButton.Remove /> : <CartButton.Add />;
-};
-
-CartButton.Remove = function Remove() {
-  const { productId, setIsPushed } = useCartButtonContext();
-  const { cartItems, refreshCartItems } = useCartItemsContext();
-
-  const cartItemId = cartItems.find(
-    (cartItem) => cartItem.product.id === productId
-  )?.id;
-
-  const { query: removeCartItem } = cartMutations.useDeleteCartItem({
-    cartItemId,
-  });
-
-  const handleClick = () => {
-    if (!cartItemId) return;
-
-    removeCartItem().then(() => {
-      refreshCartItems();
-      setIsPushed(false);
-    });
-  };
+  const { productId, isPushed } = useCartButtonContext();
 
   return (
-    <S.Button isPushed onClick={handleClick}>
-      <RemoveCartIcon />
-      <p>빼기</p>
-    </S.Button>
+    <Suspense fallback={<LoadingSpinner />}>
+      <S.ButtonContainer>
+        {isPushed ? (
+          <QuantityButton productId={productId} />
+        ) : (
+          <CartButton.Add />
+        )}
+      </S.ButtonContainer>
+    </Suspense>
   );
 };
 
 CartButton.Add = function Add() {
-  const { productId, setIsPushed } = useCartButtonContext();
-  const { refreshCartItems } = useCartItemsContext();
+  const { productId } = useCartButtonContext();
 
-  const { query: addCartItem } = cartMutations.useAddCartItem({
+  const { mutate: addCartItem } = cartMutations.useAddCartItem({
     productId,
   });
 
   const handleClick = () => {
-    addCartItem().then(() => {
-      refreshCartItems();
-      setIsPushed(true);
-    });
+    addCartItem();
   };
 
   return (
