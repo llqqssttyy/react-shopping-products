@@ -1,9 +1,6 @@
-import { CartButtonProvider } from '../../../context/cartButton/CartButtonProvider';
-import { useCartButtonContext } from '../../../context/cartButton/useCartButtonContext';
-import { cartMutations } from '../../../hooks/queries/cart';
+import { cartMutations, cartQueries } from '../../../hooks/queries/cart';
+import { EllipsisLoader } from '../../common/LoadingSpinner/style';
 
-import { Suspense } from 'react';
-import { LoadingSpinner } from '../../common/LoadingSpinner/style';
 import QuantityButton from '../../common/QuantityButton';
 import { AddCartIcon } from './Icons';
 import * as S from './style';
@@ -13,39 +10,39 @@ export interface CartButtonProps {
 }
 
 export default function CartButton({ productId }: CartButtonProps) {
+  const { data: cartItems } = cartQueries.useGetCartItems();
+
+  const isPushed = cartItems.some(
+    (cartItem) => cartItem.product.id === productId
+  );
+
   return (
-    <CartButtonProvider productId={productId}>
-      <CartButton.Toggle />
-    </CartButtonProvider>
+    <S.ButtonContainer>
+      {isPushed ? (
+        <QuantityButton productId={productId} />
+      ) : (
+        <CartButton.Add productId={productId} />
+      )}
+    </S.ButtonContainer>
   );
 }
 
-CartButton.Toggle = function Toggle() {
-  const { productId, isPushed } = useCartButtonContext();
-
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <S.ButtonContainer>
-        {isPushed ? (
-          <QuantityButton productId={productId} />
-        ) : (
-          <CartButton.Add />
-        )}
-      </S.ButtonContainer>
-    </Suspense>
-  );
-};
-
-CartButton.Add = function Add() {
-  const { productId } = useCartButtonContext();
-
-  const { mutate: addCartItem } = cartMutations.useAddCartItem({
+CartButton.Add = function Add({ productId }: { productId: number }) {
+  const { mutate: addCartItem, isPending } = cartMutations.useAddCartItem({
     productId,
   });
 
   const handleClick = () => {
     addCartItem();
   };
+
+  if (isPending) {
+    return (
+      <S.Button>
+        <EllipsisLoader style={{ top: '-11px' }} />
+      </S.Button>
+    );
+  }
 
   return (
     <S.Button isPushed={false} onClick={handleClick}>
